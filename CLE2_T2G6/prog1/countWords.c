@@ -99,7 +99,6 @@ int main(int argc, char *argv[]) {
 
 static void dispatcher(char *file_names[], int num_of_files) {
 
-    //MPI_Request reqSnd[num_of_workers], reqRec[num_of_workers];
     bool msgRec[num_of_workers];
     struct FileResults results[num_of_workers];
 
@@ -118,6 +117,7 @@ static void dispatcher(char *file_names[], int num_of_files) {
 
     //generate the chunks of each file
     for(int i=0; i<num_of_files; i++){
+        
         FILE * file_pointer;
         unsigned char byte;        //variable used to store each byte of the file  
         unsigned char *character;  //variable used to store the char
