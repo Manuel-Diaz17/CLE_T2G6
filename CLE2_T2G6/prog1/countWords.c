@@ -99,10 +99,9 @@ int main(int argc, char *argv[]) {
 
 static void dispatcher(char *file_names[], int num_of_files) {
 
-    MPI_Request reqSnd[num_of_workers], reqRec[num_of_workers];
+    //MPI_Request reqSnd[num_of_workers], reqRec[num_of_workers];
     bool msgRec[num_of_workers];
     struct FileResults results[num_of_workers];
-    int recVal = 0;
 
     for (int i = 0; i < num_of_workers; i++) {
         msgRec[i] = false;
@@ -195,7 +194,7 @@ static void dispatcher(char *file_names[], int num_of_files) {
             if (s != 1)
                 printf("Error creating chunk buffer.");
 
-            MPI_Isend(chunk, current_chunk_size + current_char_size + sizeof(int), MPI_BYTE, current_worker_id, 1, MPI_COMM_WORLD, &reqSnd[current_worker_id-1]);
+            MPI_Send(chunk, current_chunk_size + current_char_size + sizeof(int), MPI_BYTE, current_worker_id, 1, MPI_COMM_WORLD);
             
             //update current_worker_id and num_of_chunks_sent variables
             current_worker_id = (current_worker_id % num_of_workers) + 1;
@@ -208,24 +207,16 @@ static void dispatcher(char *file_names[], int num_of_files) {
                 //check if results from workers are available
                 for (int i = 1; i <= num_of_workers; i++) {
 
-                    recVal = 0;
-
                     if (!msgRec[i-1]) {
-                        MPI_Irecv(&results[i-1], sizeof(struct FileResults), MPI_BYTE, i, 0, MPI_COMM_WORLD, &reqRec[i-1]);
-                        msgRec[i-1] = true;
-                    }
+                        MPI_Recv(&results[i-1], sizeof(struct FileResults), MPI_BYTE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-                    MPI_Test(&reqRec[i-1], &recVal, MPI_STATUS_IGNORE);
-
-                    if (recVal) {
-                        // Save results
+                        //save results
                         saveResults(results[i-1].file_id, results[i-1].total_num_of_words, results[i-1].total_words_with_two_equal_consonants);
 
                         num_of_chunks_sent -= 1;
                         msgRec[i-1] = false;
                     }
                 }
-
             }
         }
 
@@ -237,17 +228,10 @@ static void dispatcher(char *file_names[], int num_of_files) {
     while (num_of_chunks_sent > 0) {
         for (int i = 1; i <= num_of_workers; i++) {
 
-            recVal = 0;
-
             if (!msgRec[i-1]) {
-                MPI_Irecv(&results[i-1], sizeof(struct FileResults), MPI_BYTE, i, 0, MPI_COMM_WORLD, &reqRec[i-1]);
-                msgRec[i-1] = true;
-            }
+                MPI_Recv(&results[i-1], sizeof(struct FileResults), MPI_BYTE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-            MPI_Test(&reqRec[i-1], &recVal, MPI_STATUS_IGNORE);
-            if (recVal) {
-
-                // Save results
+                //save results
                 saveResults(results[i-1].file_id, results[i-1].total_num_of_words, results[i-1].total_words_with_two_equal_consonants);
             
                 num_of_chunks_sent-=1;
@@ -256,26 +240,20 @@ static void dispatcher(char *file_names[], int num_of_files) {
         }
     }
 
+    
     //send message to each process to know that there are no more chunks to process
     for (int i = 1; i <= num_of_workers; i++) {
         unsigned char* last_chunk = malloc(sizeof(unsigned char));
         last_chunk[0] = 255;
 
         //send special chunk to Worker
-        MPI_Isend(last_chunk, sizeof(unsigned char), MPI_BYTE, i, 1, MPI_COMM_WORLD, &reqSnd[i-1]);
-    }
-
-    // Wait for all sends to complete
-    for (int i = 0; i < num_of_workers; i++) {
-        MPI_Wait(&reqSnd[i], MPI_STATUS_IGNORE);
+        MPI_Send(last_chunk, sizeof(unsigned char), MPI_BYTE, i, 1, MPI_COMM_WORLD);
     }
 
 }
 
 //its role is to get chunks of data and count the words. After that, it incrementes the counters in shared region.
 static void *worker(int rank) {
-
-    MPI_Request reqSnd;
 
     while (true) {
 
@@ -314,8 +292,7 @@ static void *worker(int rank) {
         results.total_num_of_words = total_num_of_words;
         results.total_words_with_two_equal_consonants = total_words_with_two_equal_consonants;
         
-        MPI_Isend(&results, sizeof(struct FileResults), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &reqSnd);
-        MPI_Wait(&reqSnd, MPI_STATUS_IGNORE);
+        MPI_Send(&results, sizeof(struct FileResults), MPI_BYTE, 0, 0, MPI_COMM_WORLD);
     }
     return 0;
 }
