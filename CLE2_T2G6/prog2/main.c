@@ -66,7 +66,12 @@ int main(int argc, char *argv[])
             
             printf("Current file being processed: %s\n", argv[i + 2]);
             // Read the number of integers in the file
-            fread(&total_n, sizeof(int), 1, file);
+            size_t read_result = fread(&total_n, sizeof(int), 1, file);
+            if (read_result != 1) {
+                fprintf(stderr, "ERROR! Failed to read the number of integers from file: %s\n", argv[i + 2]);
+                fclose(file);
+                continue;
+            }
         }
 
         // Broadcast the number of integers to all processors
@@ -79,7 +84,12 @@ int main(int argc, char *argv[])
         // Distributor reads all the integers in the file and stores them in the array
         if (rank == 0)
         {
-            fread(array, sizeof(int), total_n, file);
+            size_t read_result = fread(array, sizeof(int), total_n, file);
+            if (read_result != 1) {
+                fprintf(stderr, "ERROR! Failed to read the number of integers from file: %s\n", argv[i + 2]);
+                fclose(file);
+                continue;
+            }
             fclose(file);
         }
 
