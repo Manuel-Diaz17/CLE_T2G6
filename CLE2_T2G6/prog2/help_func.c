@@ -30,34 +30,29 @@ int validate_array(int *array, int size) {
 /**
  * \brief Mergethe sub arrays in the sequence. 
 */
-void merge_subarrays(int *array, int dir, int index, int n_to_sort){
-
-    if (index > 1){
-        
-        int k = index / 2;
-
-        for (int i = 0; i < n_to_sort; i++){
-            if (dir == (array[i] > array[i + k])){
+void merge_subarrays(int *array, int n_to_merge, int index, int dir) {
+    if (n_to_merge > 1) {
+        int k = n_to_merge / 2;
+        for (int i = index; i < index + k; i++) {
+            if (dir == (array[i] > array[i + k])) {
                 int temp = array[i];
                 array[i] = array[i + k];
                 array[i + k] = temp;
             }
         }
-        merge_subarrays(array, dir, k, n_to_sort);
-        merge_subarrays(array + k, dir, k, n_to_sort);
+        merge_subarrays(array, k, index, dir);
+        merge_subarrays(array, k, index + k, dir);
     }
 }
 
 /**
  * \brief Validate if array is sorted correctly. 
 */
-void merge_sort(int *array, int size_sub, int index, int dir){
-    if (index > 1){
-        int k = size_sub / 2;
-
-        merge_sort(array, index, k, 1);
-        merge_sort(array, index + k, k, 0);
-        merge_subarrays(array, index, size_sub, dir);
+void merge_sort(int *array, int size_sub_array, int index, int dir) {
+    if (size_sub_array > 1) {
+        int k = size_sub_array / 2;
+        merge_sort(array, k, index, 1);
+        merge_sort(array, k, index + k, 0);
+        merge_subarrays(array, size_sub_array, index, dir);
     }
-    
 }

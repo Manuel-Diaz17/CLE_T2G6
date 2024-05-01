@@ -29,11 +29,11 @@ int validate_array(int *array, int size);
 /**
  * \brief Mergethe sub arrays in the sequence. 
 */
-void merge_subarrays(int *array, int dir, int index, int n_to_sort);
+void merge_subarrays(int *array, int n_to_merge, int index, int dir) ;
 
 /**
  * \brief Validate if array is sorted correctly. 
 */
-void merge_sort(int *array, int size_sub, int index, int dir);
+void merge_sort(int *array, int size_sub_array, int index, int dir);
 
 #endif

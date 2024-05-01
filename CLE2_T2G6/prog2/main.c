@@ -10,12 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
-#include <linux/time.h>
+#include <time.h>
 
 #include "help_func.h"
 
 
-void dispatcher(char ***fileNames, int fileAmount);
 static double get_delta_time(void);
 
 /**
@@ -30,7 +29,6 @@ int main(int argc, char *argv[])
     int size, rank; 
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    
 
     if (argc < 3 || strcmp(argv[1], "-f") != 0)
     {
@@ -42,36 +40,32 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // Number of files
-    int nFiles = argc - 2;
-
-
     // Iterate for each file annd sort them
-    for (int i = 0; i < nFiles; i++)
+    for (int i = 2; i < argc; i++)
     {
-        FILE *file;
+        FILE *file = NULL;
         int total_n = 0; // Total number of integers in the file
 
         // Make Distributor open the file and read the number of integers
         if (rank == 0)
         {
-            file = fopen(argv[i + 2], "rb");
+            file = fopen(argv[i], "rb");
             if (!file)
             {
-                fprintf(stderr, "ERROR! Error opening file: %s\n", argv[i + 2]);
+                fprintf(stderr, "ERROR! Error opening file: %s\n", argv[i]);
                 continue;
             }
+            
+            
+            printf("Current file being processed: %s\n", argv[i]);
+            // Read the number of integers in the file
+
+            fread(&total_n, sizeof(int), 1, file);
+       
+
             //start timer
             (void) get_delta_time();
-            
-            printf("Current file being processed: %s\n", argv[i + 2]);
-            // Read the number of integers in the file
-            size_t read_result = fread(&total_n, sizeof(int), 1, file);
-            if (read_result != 1) {
-                fprintf(stderr, "ERROR! Failed to read the number of integers from file: %s\n", argv[i + 2]);
-                fclose(file);
-                continue;
-            }
+
         }
 
         // Broadcast the number of integers to all processors
@@ -84,12 +78,7 @@ int main(int argc, char *argv[])
         // Distributor reads all the integers in the file and stores them in the array
         if (rank == 0)
         {
-            size_t read_result = fread(array, sizeof(int), total_n, file);
-            if (read_result != 1) {
-                fprintf(stderr, "ERROR! Failed to read the number of integers from file: %s\n", argv[i + 2]);
-                fclose(file);
-                continue;
-            }
+            fread(array, sizeof(int), total_n, file);
             fclose(file);
         }
 
@@ -103,40 +92,36 @@ int main(int argc, char *argv[])
         int chunk_size = total_n / size;
 
         // Scatter the integers inn chunks to all processors
-        MPI_Scatter(array, chunk_size, MPI_INT, array, chunk_size, MPI_INT, 0, MPI_COMM_WORLD);        
+        MPI_Scatter(array, chunk_size, MPI_INT, local_array, chunk_size, MPI_INT, 0, MPI_COMM_WORLD);        
 
         // Use bitonic sort algorithm to sort the integers first array goes in ascending order
         merge_sort(local_array, chunk_size, 0, 1);
 
         // Iterate for each processor
-        for (int j = 1; j <= size; j *= 2){
+        for (int j = 1; j < size; j <<= 1){
 
             // Define the partner processor for the current processor to proceed with the iteration
             int partner = rank ^ j;
 
-            MPI_Sendrecv_replace(array, chunk_size, MPI_INT, partner, 0, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Sendrecv_replace(local_array, chunk_size, MPI_INT, partner, 0, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-            // Merge the integers in the array
+            // Merge the integers in the array with the directions: 0 -> ascending || 1 -> descending
             if (rank & j){
-                merge_subarrays(array, chunk_size, 0, 0);
+                merge_subarrays(local_array, chunk_size, 0, 0);
             }
             else
             {
-                merge_subarrays(array, chunk_size, 0, 1);
+                merge_subarrays(local_array, chunk_size, 0, 1);
             }
         }
 
-        MPI_Gather(array, chunk_size, MPI_INT, array, chunk_size, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Gather(local_array, chunk_size, MPI_INT, array, chunk_size, MPI_INT, 0, MPI_COMM_WORLD);
 
         // Distributor merge sorts all the local arrays
         if (rank == 0)
         {
             merge_sort(array, total_n, 0, 1);
-        }
 
-        // Validate if the array is sorted correctly
-        if (rank == 0)
-        {
             if (validate_array(array, total_n))
             {
                 printf("Correctly sorted.\n");
@@ -151,7 +136,6 @@ int main(int argc, char *argv[])
         free(local_array);
     }
 
-    // End timer
     if (rank == 0)
     {
         // Print the execution time
