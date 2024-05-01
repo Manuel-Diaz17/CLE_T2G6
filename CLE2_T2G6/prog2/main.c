@@ -34,33 +34,47 @@ int main(int argc, char *argv[])
     {
         if (rank == 0)
         {
-            fprintf(stderr, "ERROR! Usage: mpiexec -n [number of processors] ./%s -f -f <file1> ...\n", argv[0]);
+            fprintf(stderr, "ERROR! Usage: mpiexec -n [number of processors] ./%s -f <file1> \n", argv[0]);
         }
         MPI_Finalize();
         return EXIT_FAILURE;
     }
 
     // Iterate for each file annd sort them
-    for (int i = 2; i < argc; i++)
-    {
+    //for (int i = 2; i < argc; i++)
+    //{
         FILE *file = NULL;
         int total_n = 0; // Total number of integers in the file
 
         // Make Distributor open the file and read the number of integers
         if (rank == 0)
         {
-            file = fopen(argv[i], "rb");
+            file = fopen(argv[2], "rb");
             if (!file)
             {
-                fprintf(stderr, "ERROR! Error opening file: %s\n", argv[i]);
-                continue;
+                fprintf(stderr, "ERROR! Error opening file: %s\n", argv[2]);
+                MPI_Finalize();
+                return EXIT_FAILURE;
             }
             
             
-            printf("Current file being processed: %s\n", argv[i]);
+            printf("Current file being processed: %s\n", argv[2]);
             // Read the number of integers in the file
 
-            fread(&total_n, sizeof(int), 1, file);
+            size_t items_read = fread(&total_n, sizeof(int), 1, file);
+            if (items_read != 1) {
+                if (feof(file)) {
+                    fprintf(stderr, "ERROR! Unexpected end of file while reading total number of integers.\n");
+                } else if (ferror(file)) {
+                    perror("fread");
+                    fprintf(stderr, "ERROR! Failed to read total number of integers from file.\n");
+                } else {
+                    fprintf(stderr, "ERROR! Failed to read total number of integers from file.\n");
+                }
+                MPI_Finalize();
+                return EXIT_FAILURE;
+            }
+
        
 
             //start timer
@@ -78,7 +92,20 @@ int main(int argc, char *argv[])
         // Distributor reads all the integers in the file and stores them in the array
         if (rank == 0)
         {
-            fread(array, sizeof(int), total_n, file);
+            size_t items_read = fread(array, sizeof(int), total_n, file);
+            if (items_read != total_n) {
+                if (feof(file)) {
+                    fprintf(stderr, "ERROR! Unexpected end of file while reading integers.\n");
+                } else if (ferror(file)) {
+                    perror("fread");
+                    fprintf(stderr, "ERROR! Failed to read integers from file.\n");
+                } else {
+                    fprintf(stderr, "ERROR! Failed to read integers from file.\n");
+                }
+                MPI_Finalize();
+                return EXIT_FAILURE;
+            }
+
             fclose(file);
         }
 
@@ -124,17 +151,22 @@ int main(int argc, char *argv[])
 
             if (validate_array(array, total_n))
             {
-                printf("Correctly sorted.\n");
+                printf("SUCCESS!\n");
+                //print the array
+                //for (int i = 0; i < total_n; i++)
+                //{
+                //    printf("%d ", array[i]);
+                //}
             } 
             else 
             {
-                printf("Not correctly sorted.\n");
+                printf("FAIL!\n");
             }
         }
 
         free(array);
         free(local_array);
-    }
+    //}
 
     if (rank == 0)
     {
