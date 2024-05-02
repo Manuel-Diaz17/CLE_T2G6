@@ -148,6 +148,10 @@ int main(int argc, char *argv[])
         if (rank == 0)
         {
             merge_sort(array, total_n, 0, 1);
+            // Print the execution time
+            printf("Execution time: %f\n", get_delta_time());
+        
+    
 
             if (validate_array(array, total_n))
             {
@@ -168,12 +172,7 @@ int main(int argc, char *argv[])
         free(local_array);
     //}
 
-    if (rank == 0)
-    {
-        // Print the execution time
-        printf("Execution time: %f\n", get_delta_time());
-        
-    }
+    
 
     MPI_Finalize();
     return EXIT_SUCCESS;
