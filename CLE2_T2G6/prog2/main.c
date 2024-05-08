@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     {
         if (rank == 0)
         {
-            fprintf(stderr, "ERROR! Usage: mpiexec -n [number of processors] ./%s -f <file1> \n", argv[0]);
+            fprintf(stderr, "ERROR! Usage: mpiexec -n [number of processors] ./%s -f <file> \n", argv[0]);
         }
         MPI_Finalize();
         return EXIT_FAILURE;

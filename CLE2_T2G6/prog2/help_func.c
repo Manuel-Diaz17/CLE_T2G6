@@ -28,7 +28,7 @@ int validate_array(int *array, int size) {
 }
 
 /**
- * \brief Mergethe sub arrays in the sequence. 
+ * \brief Merge the sub arrays in the sequence. 
 */
 void merge_subarrays(int *array, int n_to_merge, int index, int dir) {
     if (n_to_merge > 1) {
@@ -46,7 +46,7 @@ void merge_subarrays(int *array, int n_to_merge, int index, int dir) {
 }
 
 /**
- * \brief Validate if array is sorted correctly. 
+ * \brief Recursively sorts a bitonic sequence.
 */
 void merge_sort(int *array, int size_sub_array, int index, int dir) {
     if (size_sub_array > 1) {
